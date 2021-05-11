@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <map>
 #include <algorithm>
 #include <sstream>
 #include <iterator>
@@ -29,12 +30,34 @@ struct Tree
   bool isDormant; // 1 if this tree is dormant
 };
 
+enum COMMAND
+{
+  SEED,
+  GROW,
+  COMPLETE,
+  WAIT,
+};
+
+map<COMMAND, string> CommandToString = {
+    {SEED, "SEED"},
+    {GROW, "GROW"},
+    {COMPLETE, "COMPLETE"},
+    {WAIT, "WAIT"},
+};
+
+map<string, COMMAND> StringToCommand = {
+    {"SEED", SEED},
+    {"GROW", GROW},
+    {"COMPLETE", COMPLETE},
+    {"WAIT", WAIT},
+};
+
 struct Action
 {
   string action = "";
-  string command = "";
-  int arg1 = -1;
-  int arg2 = -1;
+  string command = CommandToString.at(WAIT);
+  int index1 = -1;
+  int index2 = -1;
   float points = 0.0f;
 
   void print() const;
@@ -45,11 +68,11 @@ void Action::print() const
 {
   cout << this->command;
 
-  if (this->arg1 >= 0)
-    cout << " " << this->arg1;
+  if (this->index1 >= 0)
+    cout << " " << this->index1;
 
-  if (this->arg2 >= 0)
-    cout << " " << this->arg2;
+  if (this->index2 >= 0)
+    cout << " " << this->index2;
 
   cout << endl;
 };
@@ -61,20 +84,21 @@ void Action::init(string possibleAction)
                          istream_iterator<string>());
 
   this->action = possibleAction;
+
   this->command = results[0];
+
   if (results.size() > 1)
   {
     stringstream ss;
     ss << results[1];
-    ss >> this->arg1;
+    ss >> this->index1;
   }
   if (results.size() > 2)
   {
     stringstream ss;
     ss << results[2];
-    ss >> this->arg2;
+    ss >> this->index2;
   }
-  this->points = this->arg1 + this->arg2;
 };
 
 struct State
@@ -152,6 +176,28 @@ void UpdateState(State *state)
   state->sunDirection = state->day % 6;
 }
 
+void EvaluateActions(State *state)
+{
+  for (Action &a : state->actions)
+  {
+    switch (StringToCommand.at(a.command))
+    {
+    case COMMAND::SEED:
+      a.points += 10 + (state->numberOfCells - a.index2);
+      break;
+    case COMMAND::GROW:
+      a.points += 10 + (state->numberOfCells - a.index2) + (3 - state->trees[a.index1].size);
+      break;
+    case COMMAND::COMPLETE:
+      a.points += 30 + (20 - state->sun) + ((state->oppScore > state->score) ? 200 : 0);
+      break;
+    default:
+      a.points += -10;
+      break;
+    }
+  }
+}
+
 int main()
 {
   State state = State();
@@ -161,13 +207,18 @@ int main()
   {
     UpdateState(&state);
 
+    EvaluateActions(&state);
+
     state.sortActions();
 
     // for (auto i : state.actions)
     // {
+    //   DEBUG(i.command);
+    //   // DEBUG(i.index1);
+    //   // DEBUG(i.index2);
     //   DEBUG(i.points);
     // }
 
-    state.actions[1].print();
+    state.actions[0].print();
   }
 }
