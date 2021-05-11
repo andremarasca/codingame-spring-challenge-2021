@@ -2,6 +2,10 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <sstream>
+#include <iterator>
+
+#define DEBUG(MSG) ((cerr << MSG << endl))
 
 using namespace std;
 
@@ -25,6 +29,54 @@ struct Tree
   bool isDormant; // 1 if this tree is dormant
 };
 
+struct Action
+{
+  string action = "";
+  string command = "";
+  int arg1 = -1;
+  int arg2 = -1;
+  float points = 0.0f;
+
+  void print() const;
+  void init(string);
+};
+
+void Action::print() const
+{
+  cout << this->command;
+
+  if (this->arg1 >= 0)
+    cout << " " << this->arg1;
+
+  if (this->arg2 >= 0)
+    cout << " " << this->arg2;
+
+  cout << endl;
+};
+
+void Action::init(string possibleAction)
+{
+  istringstream iss(possibleAction);
+  vector<string> results((istream_iterator<string>(iss)),
+                         istream_iterator<string>());
+
+  this->action = possibleAction;
+  this->command = results[0];
+  if (results.size() > 1)
+  {
+    stringstream ss;
+    ss << results[1];
+    ss >> this->arg1;
+  }
+  if (results.size() > 2)
+  {
+    stringstream ss;
+    ss << results[2];
+    ss >> this->arg2;
+  }
+  this->points = this->arg1 + this->arg2;
+};
+
 struct State
 {
   int numberOfCells;
@@ -39,9 +91,18 @@ struct State
   int numberOfTrees;
   vector<Tree> trees;
   int numberOfPossibleActions;
-  vector<string> actions;
+  vector<Action> actions;
   int sunDirection;
+
+  void sortActions();
 };
+
+void State::sortActions()
+{
+  sort(
+      this->actions.begin(), this->actions.end(), [](Action &a1, Action &a2) -> bool
+      { return a1.points > a2.points; });
+}
 
 void ReadCells(State *state)
 {
@@ -84,26 +145,29 @@ void UpdateState(State *state)
   {
     string possibleAction;
     getline(cin, possibleAction); // try printing something from here to start with
-    state->actions.push_back(possibleAction);
+    Action action;
+    action.init(possibleAction);
+    state->actions.push_back(action);
   }
   state->sunDirection = state->day % 6;
 }
 
-main()
+int main()
 {
   State state = State();
   ReadCells(&state);
 
-  // game loop
   while (1)
   {
     UpdateState(&state);
 
-    for (auto &&i : state.actions)
-    {
-      cerr << i << endl;
-    }
+    state.sortActions();
 
-    cout << state.actions[1] << endl;
+    // for (auto i : state.actions)
+    // {
+    //   DEBUG(i.points);
+    // }
+
+    state.actions[1].print();
   }
 }
