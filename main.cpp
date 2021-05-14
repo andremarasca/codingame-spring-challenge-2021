@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <queue>
 #include <map>
 #include <algorithm>
 #include <sstream>
@@ -103,6 +104,7 @@ void Action::init(string possibleAction)
 
 struct State
 {
+  float points = 0.0f;
   int numberOfCells;
   vector<Cell> cells;
   int day;
@@ -198,18 +200,56 @@ void EvaluateActions(State *state)
   }
 }
 
+struct Leaf
+{
+  queue<Action> branch;
+  State state;
+};
+
+Action BuildTree(queue<Leaf> *tree, int height = 5, double points = 0.0f)
+{
+  // DEBUG("Queue size: " + to_string(queue->size()));
+  if (height <= 0)
+    return tree->front().branch.front();
+  if (tree->empty())
+    return Action();
+
+  Leaf trunk = tree->front();
+  tree->pop();
+  // DEBUG(node.actions.size());
+
+  EvaluateActions(&trunk.state);
+  trunk.state.sortActions();
+  for (Action action : trunk.state.actions)
+  {
+    // DEBUG(action.command);
+    Leaf leaf = trunk;
+    leaf.branch.push(action);
+    leaf.state.points += action.points;
+    trunk.state.actions.clear();
+    tree->push(leaf);
+  }
+
+  // DEBUG("Depth: " + to_string(depth));
+
+  return BuildTree(tree, height - 1, points);
+}
+
 int main()
 {
-  State state = State();
-  ReadCells(&state);
+  queue<Leaf> tree;
+  Leaf root = Leaf();
+  ReadCells(&root.state);
 
   while (1)
   {
-    UpdateState(&state);
+    UpdateState(&root.state);
 
-    EvaluateActions(&state);
+    tree.push(root);
+    BuildTree(&tree);
+    tree = std::queue<Leaf>();
 
-    state.sortActions();
+    root.state.sortActions();
 
     // for (auto i : state.actions)
     // {
@@ -219,6 +259,6 @@ int main()
     //   DEBUG(i.points);
     // }
 
-    state.actions[0].print();
+    root.state.actions[0].print();
   }
 }
